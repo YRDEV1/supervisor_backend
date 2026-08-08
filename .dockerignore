@@ -1,0 +1,11 @@
+.venv
+.git
+__pycache__
+*.py[oc]
+*.egg-info
+build/
+dist/
+.env
+tatwir.backup
+DATA/
+.claude/

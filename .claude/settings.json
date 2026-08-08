@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/sync-tables-reminder.js",
+            "shell": "bash",
+            "statusMessage": "Checking DATA/QUERY.md for new tables..."
+          }
+        ]
+      }
+    ]
+  }
+}
