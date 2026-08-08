@@ -9,6 +9,7 @@ from app.src.models.client import Client
 from app.src.models.order import Order
 from app.src.models.order_line_item import OrderLineItem
 from app.src.schemas.territory import TerritorySortBy
+from app.src.repositories.utils import fetch_names
 
 class TerritoryRepository:
     def __init__(self, session: ASYNC_SESSION):
@@ -38,14 +39,22 @@ class TerritoryRepository:
         query = select(
             Territory.id,
             Territory.code,
-            Territory.territory_name,
             revenue,
             profit,
         ).select_from(Territory).outerjoin(
             Client, Client.territory_ref == Territory.id
         ).outerjoin(
             line_items, line_items.c.client_ref == Client.id
-        ).group_by(Territory.id, Territory.code, Territory.territory_name).order_by(sort_column.desc())
+        ).group_by(Territory.id, Territory.code).order_by(sort_column.desc())
         query = query.limit(limit).offset((page - 1) * limit)
-        execution = await self.session.execute(query)
-        return execution.all()
+        rows = (await self.session.execute(query)).all()
+
+        names = await fetch_names(self.session, Territory.id, Territory.territory_name,
+                                   [row.id for row in rows])
+        return [
+            {
+                "id": row.id, "code": row.code, "territory_name": names.get(row.id),
+                "revenue": row.revenue, "profit": row.profit,
+            }
+            for row in rows
+        ]

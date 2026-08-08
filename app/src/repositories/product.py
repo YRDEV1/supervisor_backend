@@ -10,6 +10,7 @@ from app.src.models.order import Order
 from app.src.models.order_line_item import OrderLineItem
 from app.src.models.client import Client
 from app.src.schemas.product import ProductSortBy
+from app.src.repositories.utils import fetch_names
 
 class ProductRepository:
     def __init__(self, session: ASYNC_SESSION):
@@ -53,19 +54,25 @@ class ProductRepository:
         total_quantity = func.sum(OrderLineItem.quantity).label("total_quantity")
         total_revenue = func.sum(OrderLineItem.sale_total).label("total_revenue")
         query = select(
-            Product.id,
-            Product.full_name.label("product_name"),
+            OrderLineItem.product_ref,
             total_quantity,
             total_revenue,
-        ).select_from(OrderLineItem).join(Order, Order.id == OrderLineItem.order_ref).join(
-            Product, Product.id == OrderLineItem.product_ref
-        ).where(
+        ).select_from(OrderLineItem).join(Order, Order.id == OrderLineItem.order_ref).where(
             Order.date_time >= from_date, Order.date_time < to_date
-        ).group_by(Product.id, Product.full_name)
+        ).group_by(OrderLineItem.product_ref)
         query = query.order_by(total_quantity.desc() if descending else total_quantity.asc())
         query = query.limit(limit).offset((page - 1) * limit)
-        execution = await self.session.execute(query)
-        return execution.all()
+        rows = (await self.session.execute(query)).all()
+
+        names = await fetch_names(self.session, Product.id, Product.full_name,
+                                   [row.product_ref for row in rows])
+        return [
+            {
+                "id": row.product_ref, "product_name": names.get(row.product_ref),
+                "total_quantity": row.total_quantity, "total_revenue": row.total_revenue,
+            }
+            for row in rows
+        ]
 
     async def get_most_sold(self, from_date: datetime.datetime, to_date: datetime.datetime, page: int, limit: int):
         return await self._get_sales(from_date=from_date, to_date=to_date, page=page, limit=limit, descending=True)
@@ -127,15 +134,24 @@ class ProductRepository:
         totals = (await self.session.execute(totals_query)).one()
 
         products_query = apply_filters(select(
-            Product.id,
-            Product.full_name.label("product_name"),
+            OrderLineItem.product_ref,
             quantity_sold,
             revenue,
             profit,
-        )).join(Product, Product.id == OrderLineItem.product_ref).group_by(
-            Product.id, Product.full_name
-        ).order_by(sort_column.desc()).limit(limit).offset((page - 1) * limit)
-        products = (await self.session.execute(products_query)).all()
+        )).group_by(OrderLineItem.product_ref).order_by(
+            sort_column.desc()
+        ).limit(limit).offset((page - 1) * limit)
+        rows = (await self.session.execute(products_query)).all()
+
+        names = await fetch_names(self.session, Product.id, Product.full_name,
+                                   [row.product_ref for row in rows])
+        products = [
+            {
+                "id": row.product_ref, "product_name": names.get(row.product_ref),
+                "quantity_sold": row.quantity_sold, "revenue": row.revenue, "profit": row.profit,
+            }
+            for row in rows
+        ]
 
         return totals.total_revenue or 0, totals.total_profit or 0, products
 

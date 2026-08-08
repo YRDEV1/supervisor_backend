@@ -12,6 +12,7 @@ from app.src.models.order_line_item import OrderLineItem
 from app.src.models.product import Product
 from app.src.models.visit import Visit
 from app.src.schemas.product import ProductSortBy
+from app.src.repositories.utils import fetch_names
 from app.src.schemas.order import OrderSortDirection
 
 class OrderRepository:

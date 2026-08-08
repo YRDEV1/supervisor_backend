@@ -18,7 +18,6 @@ class VisitRepository:
         query = select(
             Client.id.label("client_id"),
             Client.code.label("client_code"),
-            Client.full_name.label("client_name"),
             func.min(Visit.period).filter(Visit.outcome_ref == VISIT_OUTCOME_CHECK_IN.bytes).label("check_in"),
             func.max(Visit.period).filter(Visit.outcome_ref == VISIT_OUTCOME_CHECK_OUT.bytes).label("check_out"),
             func.max(Visit.period).label("request_time"),
@@ -27,10 +26,20 @@ class VisitRepository:
         )
         if client_id is not None:
             query = query.where(Visit.outlet_ref == client_id)
-        query = query.group_by(Client.id, Client.code, Client.full_name).order_by(func.min(Visit.period))
+        query = query.group_by(Client.id, Client.code).order_by(func.min(Visit.period))
         query = query.limit(limit).offset((page - 1) * limit)
-        execution = await self.session.execute(query)
-        return execution.all()
+        rows = (await self.session.execute(query)).all()
+
+        names = await fetch_names(self.session, Client.id, Client.full_name,
+                                   [row.client_id for row in rows])
+        return [
+            {
+                "client_id": row.client_id, "client_code": row.client_code,
+                "client_name": names.get(row.client_id),
+                "check_in": row.check_in, "check_out": row.check_out, "request_time": row.request_time,
+            }
+            for row in rows
+        ]
 
     async def get_entry_count(self, agent_id: bytes, client_id: bytes, from_time: datetime.datetime, to_time: datetime.datetime):
         query = select(
