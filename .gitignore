@@ -43,3 +43,9 @@ solutions_to_scaling/
 # Markdown docs (keep README)
 *.md
 !README.md
+
+# Tests (contain real credentials)
+tests/
+**/tests/
+.pytest_cache/
+tests_report*.json
