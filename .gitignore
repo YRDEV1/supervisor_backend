@@ -11,3 +11,35 @@ wheels/
 server.json
 scratch_openapi.json
 tatwir.backup
+tests_report.json
+tests_report_prod.json
+responses_local.json
+responses_prod.json
+agent_vt_check.json
+agent_vt_check.json
+API_CHANGES_2026-08-13.md
+
+
+# Secrets / env
+.env
+.env.*
+!.env.example
+
+# Tooling / caches
+.pytest_cache/
+.claude/
+.idea/
+.vscode/
+
+# Scratch / debug dumps
+/*.json
+!/package.json
+*.backup
+
+# Generated docs / reports
+API_CHANGES_*.html
+solutions_to_scaling/
+
+# Markdown docs (keep README)
+*.md
+!README.md
